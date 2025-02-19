@@ -1,0 +1,20 @@
+{
+  "name": "blockchain",
+  "module": "index.ts",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-verify": "^2.0.12",
+    "@nomicfoundation/hardhat-viem": "^2.0.6",
+    "@openzeppelin/contracts": "^4.9.6",
+    "@pwnfinance/multitoken": "^1.1.0",
+    "dotenv": "^16.4.7",
+    "hardhat": "^2.22.5",
+    "openzeppelin-contracts": "^4.0.0"
+  }
+}
