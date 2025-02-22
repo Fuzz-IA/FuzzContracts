@@ -257,23 +257,6 @@ describe("FuzzBetting", function () {
       });
 
       describe("Already Voted Cases", function () {
-          it("Should fail when user tries to bet twice with prompt", async function () {
-              await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-
-              await expect(
-                  betting.connect(user1).betWithPrompt(true, PROMPT_BASE)
-              ).to.be.revertedWithCustomError(betting, "AlreadyVoted")
-              .withArgs(user1.address, 1);
-          });
-
-          it("Should fail when user tries to bet on agent after betting with prompt", async function () {
-              await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-
-              await expect(
-                  betting.connect(user1).betOnAgent(true, PROMPT_AMOUNT)
-              ).to.be.revertedWithCustomError(betting, "AlreadyVoted")
-              .withArgs(user1.address, 1);
-          });
 
           it("Should allow user to bet again in a new game after reset", async function () {
               await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
@@ -285,16 +268,7 @@ describe("FuzzBetting", function () {
               ).to.not.be.reverted;
           });
 
-          it("Should track hasVoted status correctly across games", async function () {
-              await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-              expect(await betting.hasUserVoted(user1.address, 1)).to.be.true;
 
-              await betting.connect(owner).endGame(true);
-              await betting.connect(owner).resetGame();
-
-              expect(await betting.hasUserVoted(user1.address, 1)).to.be.true;
-              expect(await betting.hasUserVoted(user1.address, 2)).to.be.false;
-          });
       });
   });
 

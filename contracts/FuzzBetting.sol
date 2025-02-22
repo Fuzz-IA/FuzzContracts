@@ -40,7 +40,6 @@ contract FuzzBetting is Ownable {
     mapping(uint256 => uint256[]) public gamePrompts;
     mapping(uint256 => address[]) public gameParticipants;
     mapping(uint256 => mapping(address => bool)) public isParticipant;
-    mapping(uint256 => mapping(address => bool)) public hasVoted;
 
     event PromptBet(address indexed user, bool isAgentA, uint256 amount, uint256 promptId, uint256 gameId);
     event SimpleBet(address indexed user, bool isAgentA, uint256 amount, uint256 gameId);
@@ -55,7 +54,6 @@ contract FuzzBetting is Ownable {
     
 
 
-    error AlreadyVoted(address user, uint256 gameId);
 
     modifier onlyAdmin() {
         require(admins[msg.sender] || msg.sender == owner(),"not Authorized");
@@ -127,12 +125,10 @@ contract FuzzBetting is Ownable {
     function betWithPrompt(bool _isAgentA, uint256 _amount) external returns (uint256) {
         require(!gameEnded, "Game has ended");
         require(_amount == basePromptBetAmount,"amount must be exactly 2000 for creating a prompt");
-        if(hasVoted[currentGameId][msg.sender]) revert AlreadyVoted(msg.sender, currentGameId);
         require(_amount > 0, "Amount must be greater than 0");
 
         token.transferFrom(msg.sender, address(this), _amount);
         addParticipant(msg.sender);
-        hasVoted[currentGameId][msg.sender] = true;
 
         promptCounter++;
         uint256 promptId = currentGameId * 100000 + promptCounter;
@@ -203,11 +199,9 @@ contract FuzzBetting is Ownable {
         (uint256 requiredAmount,) = calculateDynamicBetAmount(_isAgentA);
         require(_amount >= requiredAmount, "Amount below dynamic minimum for current market condition");
         require(_amount > 0, "Amount must be greater than 0");
-        if(hasVoted[currentGameId][msg.sender]) revert AlreadyVoted(msg.sender, currentGameId);
 
         token.transferFrom(msg.sender, address(this), _amount);
         addParticipant(msg.sender);
-        hasVoted[currentGameId][msg.sender] = true;
 
         if(_isAgentA) {
             userToAgentAByGame[currentGameId][msg.sender] += _amount;
@@ -239,9 +233,6 @@ contract FuzzBetting is Ownable {
         return totalAgentA + totalAgentB;
     }
 
-    function hasUserVoted(address _user, uint256 _gameId) external view returns (bool){
-        return hasVoted[_gameId][_user];
-    }
 
     function getUserContribution(address _user,uint256 _gameId) external view returns (uint256 forA, uint256 forB) {
         return (userToAgentAByGame[_gameId][_user], userToAgentBByGame[_gameId][_user]);
