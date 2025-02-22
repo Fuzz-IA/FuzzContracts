@@ -1,10 +1,12 @@
 import hre from "hardhat";
 import { parseAbi } from "viem";
+import dotenv from "dotenv";
+dotenv.config();
 
 async function main() {
-  const token = "0x5dd6c0ef4dcb4454e0deea4d024669702e949f1b"
-  const agentA = "0x1290906984327ad1c576050C31FE5AA21D1AaA15"
-  const agentB = "0x75E3C8bcBD11a05978a60BC19C8CAA77faBF92b8"
+  const token = process.env.TOKEN_CONTRACT
+  const agentA = process.env.AGENT_A
+  const agentB = process.env.AGENT_B
   const contract = await hre.viem.deployContract("FuzzBetting", [token, agentA, agentB]);
 
   console.log("contract deployed to:", contract.address);

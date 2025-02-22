@@ -1,6 +1,5 @@
 import hre from "hardhat";
-import { parseAbi } from "viem";
-import { ethers } from "hardhat";
+
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
@@ -11,7 +10,7 @@ async function main() {
     deployer.address
   ]);
 
-  console.log("MyToken deployed to:", contract.address);
+  console.log("Token deployed to:", contract.address);
   await new Promise(resolve => setTimeout(resolve, 10000));
   try {
     await hre.run("verify:verify", {
