@@ -129,6 +129,23 @@ describe("FuzzBetting", function () {
                   1              
               );
       });
+
+      it("Should allow multiple bets and prompts from same user", async function () {
+          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+          await betting.connect(user1).betWithPrompt(false, PROMPT_BASE);
+
+          const [requiredAmount] = await betting.calculateDynamicBetAmount(true);
+          await betting.connect(user1).betOnAgent(true, requiredAmount);
+          await betting.connect(user1).betOnAgent(false, requiredAmount);
+
+          const prompts = await betting.getCurrentGamePrompts();
+          expect(prompts.length).to.equal(3);
+
+          const [forA, forB] = await betting.getUserContribution(user1.address, 1);
+          expect(forA).to.equal(PROMPT_BASE * 2n + requiredAmount);
+          expect(forB).to.equal(PROMPT_BASE + requiredAmount);
+      });
   });
 
   describe("Dynamic Betting System", function () {
