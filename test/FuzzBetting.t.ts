@@ -15,7 +15,6 @@ describe("FuzzBetting", function () {
   let user4: any;
 
   const PROMPT_AMOUNT = ethers.parseEther("2000");
-  const PROMPT_BASE = 2000n;
 
   beforeEach(async function () {
     [owner, agentA, agentB, user1, user2, user3, user4] = await ethers.getSigners();
@@ -87,19 +86,19 @@ describe("FuzzBetting", function () {
   describe("Token Management", function () {
       it("Should track token balances correctly", async function () {
           const initialBalance = await token.balanceOf(user1.address);
-          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-          expect(await token.balanceOf(user1.address)).to.equal(initialBalance - PROMPT_BASE);
+          await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+          expect(await token.balanceOf(user1.address)).to.equal(initialBalance - PROMPT_AMOUNT);
       });
   });
 
   describe("Betting Operations", function () {
       it("Should create prompt and bet correctly", async function () {
-          const tx = await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+          const tx = await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
           const promptId = await getPromptIdFromTx(tx);
 
           const prompt = await betting.getPrompt(promptId);
           expect(prompt.isAgentA).to.be.true;
-          expect(prompt.votes).to.equal(PROMPT_BASE);
+          expect(prompt.votes).to.equal(PROMPT_AMOUNT);
           expect(prompt.creator).to.equal(user1.address);
       });
 
@@ -110,30 +109,30 @@ describe("FuzzBetting", function () {
       });
 
       it("Should track game prompts correctly", async function () {
-          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-          await betting.connect(user2).betWithPrompt(false, PROMPT_BASE);
+          await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+          await betting.connect(user2).betWithPrompt(false, PROMPT_AMOUNT);
 
           const prompts = await betting.getCurrentGamePrompts();
           expect(prompts.length).to.equal(2);
       });
 
       it("Should emit correct events", async function () {
-          const tx = await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+          const tx = await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
           await expect(tx)
               .to.emit(betting, "PromptBet")
               .withArgs(
                   user1.address, 
                   true,           
-                  PROMPT_BASE,     
+                  PROMPT_AMOUNT,     
                   ethers.toBigInt(await getPromptIdFromTx(tx)), 
                   1              
               );
       });
 
       it("Should allow multiple bets and prompts from same user", async function () {
-          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-          await betting.connect(user1).betWithPrompt(false, PROMPT_BASE);
+          await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+          await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+          await betting.connect(user1).betWithPrompt(false, PROMPT_AMOUNT);
 
           const [requiredAmount] = await betting.calculateDynamicBetAmount(true);
           await betting.connect(user1).betOnAgent(true, requiredAmount);
@@ -143,56 +142,56 @@ describe("FuzzBetting", function () {
           expect(prompts.length).to.equal(3);
 
           const [forA, forB] = await betting.getUserContribution(user1.address, 1);
-          expect(forA).to.equal(PROMPT_BASE * 2n + requiredAmount);
-          expect(forB).to.equal(PROMPT_BASE + requiredAmount);
+          expect(forA).to.equal(PROMPT_AMOUNT * 2n + requiredAmount);
+          expect(forB).to.equal(PROMPT_AMOUNT + requiredAmount);
       });
   });
 
   describe("Dynamic Betting System", function () {
     beforeEach(async function() {
-        await betting.connect(owner).setBasePromptBetAmount(PROMPT_BASE);
+        await betting.connect(owner).setBasePromptBetAmount(PROMPT_AMOUNT);
     });
 
     it("Should initialize with correct base amounts", async function () {
-        expect(await betting.basePromptBetAmount()).to.equal(PROMPT_BASE);
+        expect(await betting.basePromptBetAmount()).to.equal(PROMPT_AMOUNT);
     });
 
     it("Should calculate correct amounts based on market balance", async function () {
         const [initialAmount] = await betting.calculateDynamicBetAmount(true);
-        expect(initialAmount).to.equal(PROMPT_BASE);
+        expect(initialAmount).to.equal(PROMPT_AMOUNT);
 
-        await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-        await betting.connect(user2).betWithPrompt(false, PROMPT_BASE);
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+        await betting.connect(user2).betWithPrompt(false, PROMPT_AMOUNT);
 
         const [costForDominantSide] = await betting.calculateDynamicBetAmount(true);
-        expect(costForDominantSide).to.equal(PROMPT_BASE);
+        expect(costForDominantSide).to.equal(PROMPT_AMOUNT);
 
         const [costForUnderdog] = await betting.calculateDynamicBetAmount(false);
-        expect(costForUnderdog).to.equal(PROMPT_BASE);
+        expect(costForUnderdog).to.equal(PROMPT_AMOUNT);
     });
 
     it("Should respect minimum amount threshold", async function () {
-        await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
 
         const [costForUnderdog] = await betting.calculateDynamicBetAmount(false);
-        expect(costForUnderdog).to.be.gte(PROMPT_BASE / 4n); 
+        expect(costForUnderdog).to.be.gte(PROMPT_AMOUNT / 4n); 
 
-        const minimumThreshold = PROMPT_BASE / 4n; 
+        const minimumThreshold = PROMPT_AMOUNT / 4n; 
         expect(costForUnderdog).to.be.gte(minimumThreshold);
     });
 
     it("Should track market info correctly", async function () {
-        await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-        await betting.connect(user2).betWithPrompt(false, PROMPT_BASE);
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+        await betting.connect(user2).betWithPrompt(false, PROMPT_AMOUNT);
 
         const marketInfo = await betting.getMarketInfo();
         expect(marketInfo.sideARatio).to.equal(5000);
-        expect(marketInfo.costForSideA).to.equal(PROMPT_BASE);
-        expect(marketInfo.costForSideB).to.equal(PROMPT_BASE);
+        expect(marketInfo.costForSideA).to.equal(PROMPT_AMOUNT);
+        expect(marketInfo.costForSideB).to.equal(PROMPT_AMOUNT);
     });
 
     it("Should reject bets below dynamic minimum", async function () {
-        await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
 
         const [requiredAmount] = await betting.calculateDynamicBetAmount(true);
         const belowRequired = requiredAmount - 1n;
@@ -203,7 +202,7 @@ describe("FuzzBetting", function () {
     });
 
     it("Should allow betting with exact dynamic minimum", async function () {
-        await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
         const [requiredAmount] = await betting.calculateDynamicBetAmount(true);
 
         await expect(
@@ -213,24 +212,36 @@ describe("FuzzBetting", function () {
   });
 
   describe("Game Management", function () {
-      it("Should complete game cycle correctly", async function () {
-          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
-          await betting.connect(user2).betOnAgent(false, PROMPT_AMOUNT);
-
-          await betting.connect(owner).endGame(true);
-          expect(await betting.gameEnded()).to.be.true;
-
-          await betting.connect(owner).resetGame();
-          expect(await betting.currentGameId()).to.equal(2);
-          expect(await betting.gameEnded()).to.be.false;
-      });
+    it("Should reset game state completely after endGame", async function () {
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+        await betting.connect(user2).betOnAgent(false, PROMPT_AMOUNT);
+        const initialGameId = await betting.currentGameId();
+        
+        await betting.connect(owner).endGame(true);
+        
+        expect(await betting.currentGameId()).to.equal(initialGameId + 1n);
+        expect(await betting.gameEnded()).to.be.false;
+        expect(await betting.totalAgentA()).to.equal(0);
+        expect(await betting.totalAgentB()).to.equal(0);
+        expect(await betting.promptCounter()).to.equal(0);
+        
+        const [forA, forB] = await betting.getUserContribution(user1.address, initialGameId + 1n);
+        expect(forA).to.equal(0);
+        expect(forB).to.equal(0);
+        
+        await expect(betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT))
+            .to.not.be.reverted;
+            
+        const newPrompts = await betting.getCurrentGamePrompts();
+        expect(newPrompts.length).to.equal(1);
+    });
 
       it("Should allow betting in new game after reset", async function () {
-          await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+          await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
           await betting.connect(owner).endGame(true);
-          await betting.connect(owner).resetGame();
 
-          await expect(betting.connect(user1).betWithPrompt(true, PROMPT_BASE))
+
+          await expect(betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT))
               .to.not.be.reverted;
 
           const prompts = await betting.getCurrentGamePrompts();
@@ -239,11 +250,10 @@ describe("FuzzBetting", function () {
       });
 
       it("Should maintain prompt history across games", async function () {
-          const tx = await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+          const tx = await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
           const promptId = await getPromptIdFromTx(tx);
 
           await betting.connect(owner).endGame(true);
-          await betting.connect(owner).resetGame();
 
           const prompt = await betting.getPrompt(promptId);
           expect(prompt.exists).to.be.true;
@@ -253,8 +263,8 @@ describe("FuzzBetting", function () {
 
   describe("Error cases", function () {
     it("Should fail with insufficient bet amount", async function () {
-        await betting.connect(owner).setBasePromptBetAmount(PROMPT_BASE);
-        const lowAmount = PROMPT_BASE / 2n;
+        await betting.connect(owner).setBasePromptBetAmount(PROMPT_AMOUNT);
+        const lowAmount = PROMPT_AMOUNT / 2n;
 
         await expect(
             betting.connect(user1).betWithPrompt(true, lowAmount)
@@ -267,21 +277,16 @@ describe("FuzzBetting", function () {
           ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
-      it("Should fail when trying to reset game before ending", async function () {
-          await expect(
-              betting.connect(owner).resetGame()
-          ).to.be.revertedWith("Current game not ended");
-      });
+
 
       describe("Already Voted Cases", function () {
 
           it("Should allow user to bet again in a new game after reset", async function () {
-              await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+              await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
               await betting.connect(owner).endGame(true);
-              await betting.connect(owner).resetGame();
 
               await expect(
-                  betting.connect(user1).betWithPrompt(true, PROMPT_BASE)
+                  betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT)
               ).to.not.be.reverted;
           });
 
@@ -338,19 +343,19 @@ describe("FuzzBetting", function () {
         const initialAgentBBalance = await token.balanceOf(agentB.address);
         const initialOwnerBalance = await token.balanceOf(owner.address);
 
-        await betting.connect(user1).betWithPrompt(true, PROMPT_BASE);
+        await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
 
         const [requiredAmount] = await betting.calculateDynamicBetAmount(true);
         await betting.connect(user2).betOnAgent(true, requiredAmount);
         await betting.connect(user3).betOnAgent(false, PROMPT_AMOUNT);
 
-        const totalAmount = PROMPT_BASE + requiredAmount + PROMPT_AMOUNT;
+        const totalAmount = PROMPT_AMOUNT + requiredAmount + PROMPT_AMOUNT;
         const participationFee = (totalAmount * 100n) / 10000n;
         const winnerFee = (totalAmount * 400n) / 10000n;
         const devFee = (totalAmount * 450n) / 10000n;
         const participationFeePerAgent = participationFee / 2n;
 
-        const user1Contribution = PROMPT_BASE;
+        const user1Contribution = PROMPT_AMOUNT;
         const user2Contribution = requiredAmount;
         const totalWinningContributions = user1Contribution + user2Contribution;
 
@@ -373,7 +378,7 @@ describe("FuzzBetting", function () {
         const expectedUser2Winnings = (remainingAmount * user2Contribution) / totalWinningContributions;
 
         expect(await token.balanceOf(user1.address)).to.equal(
-            initialUser1Balance - PROMPT_BASE + expectedUser1Winnings
+            initialUser1Balance - PROMPT_AMOUNT + expectedUser1Winnings
         );
         expect(await token.balanceOf(user2.address)).to.equal(
             initialUser2Balance - requiredAmount + expectedUser2Winnings

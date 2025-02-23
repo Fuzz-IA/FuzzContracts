@@ -19,9 +19,9 @@ contract FuzzBetting is Ownable {
     uint256 public winnerFeePercentage = 400;
     uint256 public devFeePercentage = 450;
     uint256 public constant FEE_DENOMINATOR = 10000;
-    uint256 public basePromptBetAmount = 2000;
     uint256 public constant RATIO_PRECISION = 10000;
     uint256 public constant DECIMALS = 18;
+    uint256 public basePromptBetAmount = 2000 * 10**18;
 
     bool public gameEnded;
 
@@ -286,23 +286,19 @@ contract FuzzBetting is Ownable {
         }
 
         emit GameEnded(winner, totalAmount, currentGameId);
-    }
-
-
-    function resetGame() external onlyAdmin {
-        require(gameEnded, "Current game not ended");
-
-        address[] storage participants = gameParticipants[currentGameId];
-        for(uint i = 0; i < participants.length; i++) {
+        
+        for(uint i =0;i < participants.length; i++) {
             isParticipant[currentGameId][participants[i]] = false;
         }
-
+        
         gameEnded = false;
         totalAgentA = 0;
         totalAgentB = 0;
         promptCounter = 0;
         currentGameId++;
-
+        
         emit GameReset(currentGameId);
+        
     }
+
 }
