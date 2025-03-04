@@ -22,26 +22,38 @@ const config: HardhatUserConfig = {
       accounts: [process.env.PRIVATE_KEY as string],
       gasPrice: 1000000000,
     },
+    "base": {
+      url: process.env.RPC_API_KEY_BASE_MAINNET,
+      accounts: [process.env.PRIVATE_KEY_MAINNET as string],
+      gasPrice: 1000000000,
+    },
   },
   etherscan: {
     apiKey: {
-      // Para Blockscout, puede ser cualquier string no vacío
-      "base-sepolia": "any_string_works"
+      "base-sepolia": "any_string_works",
+      "base": process.env.ETHERSCAN_API_KEY_BASE
     },
     customChains: [
       {
         network: "base-sepolia",
         chainId: 84532,
         urls: {
-          // URLs de Blockscout para Base Sepolia
           apiURL: "https://base-sepolia.blockscout.com/api",
           browserURL: "https://base-sepolia.blockscout.com"
+        }
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
         }
       }
     ]
   },
   sourcify: {
-    enabled: false  // Deshabilitamos sourcify ya que usaremos Blockscout
+    enabled: false  
   },
 };
 
