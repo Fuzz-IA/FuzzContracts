@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 async function main() {
-  const token = process.env.TOKEN_CONTRACT
+  const token = process.env.TOKEN_CONTRACT_SEPOLIA
   const agentA = process.env.AGENT_A
   const agentB = process.env.AGENT_B
   const contract = await hre.viem.deployContract("FuzzBetting", [token, agentA, agentB]);

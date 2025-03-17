@@ -40,6 +40,7 @@ contract FuzzBetting is Ownable {
     mapping(uint256 => uint256[]) public gamePrompts;
     mapping(uint256 => address[]) public gameParticipants;
     mapping(uint256 => mapping(address => bool)) public isParticipant;
+    mapping(uint256 => uint256) public donationsByGame;
 
     event PromptBet(address indexed user, bool isAgentA, uint256 amount, uint256 promptId, uint256 gameId);
     event SimpleBet(address indexed user, bool isAgentA, uint256 amount, uint256 gameId);
@@ -51,6 +52,7 @@ contract FuzzBetting is Ownable {
     event FeesUpdated(uint256 participationFee, uint256 winnerFee, uint256 devFee);
     event WinningsDistributed(address user, uint256 amount);
     event BasePromptBetAmountUpdated(uint256 newAmount);
+    event Donation(address indexed donor, uint256 amount, uint256 gameId);
     
 
 
@@ -228,9 +230,20 @@ contract FuzzBetting is Ownable {
         }
         return gamePromptList;
     }
+    
+    function donate(uint256 _amount) external {
+       require(!gameEnded, "Game has ended");
+       require(_amount > 0,"Donation amount must be greater than 0");
+      
+      require(token.transferFrom(msg.sender,address(this), _amount),"Token transfer failed");
+     
+     donationsByGame[currentGameId] += _amount;
+    
+    emit Donation(msg.sender, _amount,currentGameId); 
+    }
 
     function getTotalAcumulated() public view returns (uint256) {
-        return totalAgentA + totalAgentB;
+        return totalAgentA + totalAgentB + donationsByGame[currentGameId];
     }
 
 
@@ -295,10 +308,16 @@ contract FuzzBetting is Ownable {
         totalAgentA = 0;
         totalAgentB = 0;
         promptCounter = 0;
+        donationsByGame[currentGameId] = 0;
         currentGameId++;
         
         emit GameReset(currentGameId);
         
+    }
+    
+    function getDonationsForGame(uint256 _gameId) external view returns(uint256) {
+        require(_gameId > 0 && _gameId <= currentGameId, "Invalid gameId");
+        return donationsByGame[_gameId];
     }
 
 }

@@ -404,4 +404,135 @@ describe("FuzzBetting", function () {
         }
     });
   });
+  
+  describe("Donation Functionality", function () {
+    const DONATION_AMOUNT = ethers.parseEther("1000");
+    
+    it("Should allow users to donate to the pot", async function () {
+      await expect(betting.connect(user3).donate(DONATION_AMOUNT))
+        .to.emit(betting, "Donation")
+        .withArgs(user3.address, DONATION_AMOUNT, 1);
+        
+      expect(await betting.getDonationsForGame(1)).to.equal(DONATION_AMOUNT);
+      expect(await betting.getTotalAcumulated()).to.equal(DONATION_AMOUNT);
+    });
+    
+    it("Should include donations in total pot calculation", async function () {
+      await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+      await betting.connect(user2).betOnAgent(false, PROMPT_AMOUNT);
+      
+      const beforeDonationTotal = await betting.getTotalAcumulated();
+      
+      await betting.connect(user3).donate(DONATION_AMOUNT);
+      
+      expect(await betting.getTotalAcumulated()).to.equal(beforeDonationTotal + DONATION_AMOUNT);
+    });
+    
+    it("Should reset donations counter after game ends", async function () {
+      await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+      await betting.connect(user3).donate(DONATION_AMOUNT);
+      
+      expect(await betting.getDonationsForGame(1)).to.equal(DONATION_AMOUNT);
+      
+      await betting.connect(owner).endGame(true);
+      
+      expect(await betting.getDonationsForGame(1)).to.equal(0);
+      expect(await betting.getDonationsForGame(2)).to.equal(0);
+    });
+    
+    it("Should distribute pot including donations correctly", async function () {
+      const initialUser1Balance = await token.balanceOf(user1.address);
+      const initialUser2Balance = await token.balanceOf(user2.address);
+      const initialUser3Balance = await token.balanceOf(user3.address);
+      const initialAgentABalance = await token.balanceOf(agentA.address);
+      const initialAgentBBalance = await token.balanceOf(agentB.address);
+      const initialOwnerBalance = await token.balanceOf(owner.address);
+  
+      await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+      
+      await betting.connect(user2).betOnAgent(false, PROMPT_AMOUNT);
+      
+      await betting.connect(user3).donate(DONATION_AMOUNT);
+  
+      const totalAmount = PROMPT_AMOUNT + PROMPT_AMOUNT + DONATION_AMOUNT;
+      const participationFee = (totalAmount * 100n) / 10000n;
+      const winnerFee = (totalAmount * 400n) / 10000n;
+      const devFee = (totalAmount * 450n) / 10000n;
+      const participationFeePerAgent = participationFee / 2n;
+  
+      await betting.connect(owner).endGame(true);
+  
+      expect(await token.balanceOf(owner.address)).to.equal(
+        initialOwnerBalance + devFee
+      );
+  
+      expect(await token.balanceOf(agentA.address)).to.equal(
+        initialAgentABalance + participationFeePerAgent + winnerFee
+      );
+      
+      expect(await token.balanceOf(agentB.address)).to.equal(
+        initialAgentBBalance + participationFeePerAgent
+      );
+  
+      const remainingAmount = totalAmount - participationFee - winnerFee - devFee;
+      const expectedUser1Winnings = remainingAmount; 
+      expect(await token.balanceOf(user1.address)).to.equal(
+        initialUser1Balance - PROMPT_AMOUNT + expectedUser1Winnings
+      );
+      
+      expect(await token.balanceOf(user2.address)).to.equal(
+        initialUser2Balance - PROMPT_AMOUNT 
+      );
+      
+      expect(await token.balanceOf(user3.address)).to.equal(
+        initialUser3Balance - DONATION_AMOUNT 
+      );
+  
+      const winningsDistributedEvents = await betting.queryFilter(
+        betting.filters.WinningsDistributed()
+      );
+  
+      const user1WinningsEvent = winningsDistributedEvents.find(
+        e => e.args.user === user1.address
+      );
+  
+      if (user1WinningsEvent) {
+        expect(user1WinningsEvent.args.amount).to.equal(expectedUser1Winnings);
+      }
+    });
+    
+    it("Should handle multiple donations from different users", async function () {
+      await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+      
+      await betting.connect(user3).donate(DONATION_AMOUNT);
+      await betting.connect(user4).donate(DONATION_AMOUNT / 2n);
+      
+      expect(await betting.getDonationsForGame(1)).to.equal(DONATION_AMOUNT + DONATION_AMOUNT / 2n);
+      expect(await betting.getTotalAcumulated()).to.equal(PROMPT_AMOUNT + DONATION_AMOUNT + DONATION_AMOUNT / 2n);
+    });
+    
+    it("Should fail when donation amount is zero", async function () {
+      await expect(
+        betting.connect(user3).donate(0)
+      ).to.be.revertedWith("Donation amount must be greater than 0");
+    });
+    
+    it("Should fail when game has ended", async function () {
+      await betting.connect(user1).betWithPrompt(true, PROMPT_AMOUNT);
+      
+      await betting.connect(owner).endGame(true);
+      
+      await betting.connect(user3).donate(DONATION_AMOUNT);
+    });
+    
+    it("Should handle case where all players lose and donations are distributed", async function () {
+      await betting.connect(user2).betWithPrompt(false, PROMPT_AMOUNT);
+      
+      await betting.connect(user3).donate(DONATION_AMOUNT);
+      
+      await expect(
+        betting.connect(owner).endGame(true)
+      ).to.be.revertedWith("No winning bets");
+    });
+  });
 });
